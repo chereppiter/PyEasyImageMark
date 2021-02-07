@@ -1,35 +1,83 @@
-from PySide6.QtWidgets import QWidget
-from PySide6.QtGui import QPaintEvent, QPainter, QImage, QWheelEvent
-from PySide6.QtCore import QSize, QSizeF, QRectF, QPointF, Signal
+from PySide6.QtWidgets import QWidget, QScrollArea
+from PySide6.QtGui import QGuiApplication, QShortcut, QKeySequence, QMouseEvent, QWheelEvent, Qt
+from PySide6.QtCore import Slot, QEvent
+from ImageWidget import ImageWidget
 
 
-class EditorWidget(QWidget):
+class EditorWidget(QScrollArea):
 
-    scaled = Signal(float)
-
-    def __init__(self, parent: QWidget = None):
+    def __init__(self, parent: QWidget):
         super().__init__(parent)
 
+        self._image_widget = ImageWidget(self)
+        self.setWidget(self._image_widget)
+        self.setAlignment(Qt.AlignCenter)
+        self._horz_scroll_bar = self.horizontalScrollBar()
+        self._vert_scroll_bar = self.verticalScrollBar()
+        self._clipboard = QGuiApplication.clipboard()
         self._image = None
-        self._scale_factor = 1.0
+        self._last_move_pos = None
+        self._set_scale_factor(1.0)
+        insert_shortcut = QShortcut(QKeySequence(QKeySequence.Paste), self)
+        insert_shortcut.activated.connect(self._on_paste_shortcut)
 
-    def set_image(self, image: QImage) -> None:
-        # print("EditorWidget.set_image:", image)
-        self._image = image
-        self._update_size()
+    def _set_scale_factor(self, factor: float) -> None:
+        self._scale_factor = factor
+        self._image_widget.set_scale_factor(factor)
 
-    def paintEvent(self, event: QPaintEvent) -> None:
+    @Slot()
+    def _on_paste_shortcut(self):
 
-        if self._image is None:
-            super().paintEvent(event)
+        mime_data = self._clipboard.mimeData()
+        if mime_data.hasImage():
+            image = self._clipboard.image()
+            if not image.isNull():
+                self._set_scale_factor(1.0)
+                self._image = image
+                self._image_widget.set_image(image)
+                self._image_widget.resize(image.size())
+
+    def viewportEvent(self, event: QEvent) -> bool:
+
+        if event.type() == QEvent.MouseButtonPress:
+            self._handle_mouse_press_event(event)
+        elif event.type() == QEvent.MouseButtonRelease:
+            self._handle_mouse_release_event(event)
+        elif event.type() == QEvent.MouseMove:
+            self._handle_mouse_move_event(event)
+        elif event.type() == QEvent.Wheel:
+            self._handle_wheel_event(event)
         else:
-            painter = QPainter(self)
-            target_size = QSizeF(self._image.size()) * self._scale_factor
-            target_rect = QRectF(QPointF(0, 0), target_size)
-            source_rect = QRectF(self._image.rect())
-            painter.drawImage(target_rect, self._image, source_rect)
+            return False
+        return True
 
-    def wheelEvent(self, event: QWheelEvent) -> None:
+    def _is_translating(self) -> bool:
+        return self._last_move_pos is not None
+
+    def _handle_mouse_press_event(self, event: QMouseEvent) -> None:
+
+        if (event.button() == Qt.LeftButton) and (event.buttons() == Qt.LeftButton):
+            self._last_move_pos = event.pos()
+        elif self._is_translating():
+            self._last_move_pos = None
+
+    def _handle_mouse_release_event(self, event: QMouseEvent) -> None:
+        if (event.button() == Qt.LeftButton) and self._is_translating():
+            self._last_move_pos = None
+
+    def _handle_mouse_move_event(self, event: QMouseEvent) -> None:
+
+        if self._is_translating():
+            offset = event.pos() - self._last_move_pos
+            self._last_move_pos = event.pos()
+            self._horz_scroll_bar.setValue(self._horz_scroll_bar.value() - offset.x())
+            self._vert_scroll_bar.setValue(self._vert_scroll_bar.value() - offset.y())
+
+    def _handle_wheel_event(self, event: QWheelEvent) -> None:
+
+        if (self._image is None) or self._image.isNull():
+            super().wheelEvent(event)
+            return
 
         angle_delta_y = event.angleDelta().y()
 
@@ -40,17 +88,10 @@ class EditorWidget(QWidget):
         scale_factor_factor = 1.1
         if angle_delta_y < 0:
             scale_factor_factor = 1.0 / scale_factor_factor
-        self._scale_factor *= scale_factor_factor
-        self._update_size()
-        self.scaled.emit(scale_factor_factor)
-
-    def sizeHint(self) -> QSize:
-
-        if self._image is None:
-            return QSize()
-        return self._image.size() * self._scale_factor
-
-    def _update_size(self):
-        self.setFixedSize(self.sizeHint())
-        self.updateGeometry()
-        self.update()
+        old_center = self._image_widget.mapFromParent(self.viewport().rect().center())
+        self._set_scale_factor(self._scale_factor * scale_factor_factor)
+        self._image_widget.resize(self._image.size() * self._scale_factor)
+        new_center = old_center * scale_factor_factor
+        offset = new_center - old_center
+        self._horz_scroll_bar.setValue(self._horz_scroll_bar.value() + offset.x())
+        self._vert_scroll_bar.setValue(self._vert_scroll_bar.value() + offset.y())
