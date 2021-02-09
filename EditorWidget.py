@@ -1,7 +1,7 @@
-from PySide6.QtWidgets import QWidget, QScrollArea, QMenu
-from PySide6.QtGui import QGuiApplication, QShortcut, QKeySequence, QActionGroup, Qt
+from PySide6.QtWidgets import QWidget, QScrollArea, QMenu, QApplication
+from PySide6.QtGui import QAction, QShortcut, QKeySequence, QActionGroup, Qt
 from PySide6.QtGui import QMouseEvent, QWheelEvent, QContextMenuEvent
-from PySide6.QtGui import QPainter, QPen, QColor, QImage
+from PySide6.QtGui import QPainter, QPen, QColor, QImage, QPixmap
 from PySide6.QtCore import Slot, QEvent, QPoint, QPointF, QRect, QRectF, QSizeF, Qt
 from ImageWidget import ImageWidget
 from enum import IntEnum
@@ -22,15 +22,11 @@ class EditorWidget(QScrollArea):
         self.setAlignment(Qt.AlignCenter)
         self._horz_scroll_bar = self.horizontalScrollBar()
         self._vert_scroll_bar = self.verticalScrollBar()
-        self._clipboard = QGuiApplication.clipboard()
+        self._clipboard = QApplication.clipboard()
         self._source_image = None
         self._image = None
         self._last_move_pos = None
         self._set_scale_factor(1.0)
-        paste_shortcut = QShortcut(QKeySequence(QKeySequence.Paste), self)
-        paste_shortcut.activated.connect(self._on_paste_shortcut)
-        copy_shortcut = QShortcut(QKeySequence(QKeySequence.Copy), self)
-        copy_shortcut.activated.connect(self._on_copy_shortcut)
 
         self._context_menu = QMenu(self)
 
@@ -55,16 +51,34 @@ class EditorWidget(QScrollArea):
                 action.setChecked(True)
 
         self._context_menu.addSeparator()
+        copy_action = QAction("Copy", self)
+        copy_action.setShortcut(QKeySequence(QKeySequence.Copy))
+        copy_action.triggered.connect(self._copy)
+        self._context_menu.addAction(copy_action)
+        paste_action = QAction("Paste", self)
+        paste_action.setShortcut(QKeySequence(QKeySequence.Paste))
+        paste_action.triggered.connect(self._paste)
+        self._context_menu.addAction(paste_action)
+        reset_scale_action = self._context_menu.addAction("Actual size")
+        reset_scale_action.triggered.connect(self._reset_scale)
         clear_action = self._context_menu.addAction("Clear")
         clear_action.triggered.connect(self._clear)
+
+        paste_shortcut = QShortcut(paste_action.shortcut(), self)
+        paste_shortcut.activated.connect(paste_action.trigger)
+        copy_shortcut = QShortcut(copy_action.shortcut(), self)
+        copy_shortcut.activated.connect(clear_action.trigger)
 
     def _set_scale_factor(self, factor: float) -> None:
         self._scale_factor = factor
         self._image_widget.set_scale_factor(factor)
+        if self._has_image():
+            self._image_widget.resize(self._image.size() * self._scale_factor)
 
     @Slot()
-    def _on_paste_shortcut(self):
+    def _paste(self):
 
+        print("paste")
         mime_data = self._clipboard.mimeData()
         if mime_data.hasImage():
             image = self._clipboard.image()
@@ -72,12 +86,19 @@ class EditorWidget(QScrollArea):
                 self._set_scale_factor(1.0)
                 self._source_image = image
                 self._restore_image()
+            else:
+                print("Image is null")
+        else:
+            print("Clipboard has no image")
 
     @Slot()
-    def _on_copy_shortcut(self):
-
+    def _copy(self):
         if self._has_image():
             self._clipboard.setImage(self._image)
+
+    @Slot()
+    def _reset_scale(self):
+        self._set_scale_factor(1.0)
 
     @Slot()
     def _clear(self):
@@ -173,7 +194,7 @@ class EditorWidget(QScrollArea):
             scale_factor_factor = 1.0 / scale_factor_factor
         old_center = self._image_widget.mapFromParent(self.viewport().rect().center())
         self._set_scale_factor(self._scale_factor * scale_factor_factor)
-        self._image_widget.resize(self._image.size() * self._scale_factor)
+
         new_center = old_center * scale_factor_factor
         offset = new_center - old_center
         self._horz_scroll_bar.setValue(self._horz_scroll_bar.value() + offset.x())
