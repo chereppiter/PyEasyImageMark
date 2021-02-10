@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import QWidget
-from PySide6.QtGui import QPaintEvent, QPainter, QImage, QWheelEvent
-from PySide6.QtCore import QSize, QSizeF, QRectF, QPointF, Signal
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtGui import QPaintEvent, QPainter, QImage, QWheelEvent
+from PyQt5.QtCore import QSize, QSizeF, QRectF, QPointF
 
 
 class ImageWidget(QWidget):

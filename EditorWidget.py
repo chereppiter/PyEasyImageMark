@@ -1,8 +1,9 @@
-from PySide6.QtWidgets import QWidget, QScrollArea, QMenu, QApplication
-from PySide6.QtGui import QAction, QShortcut, QKeySequence, QActionGroup, Qt
-from PySide6.QtGui import QMouseEvent, QWheelEvent, QContextMenuEvent
-from PySide6.QtGui import QPainter, QPen, QColor, QImage, QPixmap
-from PySide6.QtCore import Slot, QEvent, QPoint, QPointF, QRect, QRectF, QSizeF, Qt
+from PyQt5.QtWidgets import QWidget, QScrollArea, QMenu, QApplication
+from PyQt5.QtWidgets import QAction, QShortcut, QActionGroup
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtGui import QMouseEvent, QWheelEvent, QContextMenuEvent
+from PyQt5.QtGui import QPainter, QPen, QColor, QImage
+from PyQt5.QtCore import QEvent, QPoint, QPointF, QRectF, QSizeF, Qt
 from ImageWidget import ImageWidget
 from enum import IntEnum
 
@@ -75,7 +76,6 @@ class EditorWidget(QScrollArea):
         if self._has_image():
             self._image_widget.resize(self._image.size() * self._scale_factor)
 
-    @Slot()
     def _paste(self):
 
         print("paste")
@@ -91,16 +91,13 @@ class EditorWidget(QScrollArea):
         else:
             print("Clipboard has no image")
 
-    @Slot()
     def _copy(self):
         if self._has_image():
             self._clipboard.setImage(self._image)
 
-    @Slot()
     def _reset_scale(self):
         self._set_scale_factor(1.0)
 
-    @Slot()
     def _clear(self):
         if (self._source_image is not None) and (not self._source_image.isNull()):
             self._restore_image()
