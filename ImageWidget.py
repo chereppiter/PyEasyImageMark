@@ -68,6 +68,9 @@ class ImageWidget(QWidget):
         if not enabled and self._last_pen_pos is not None:
             self._finish_paint()
 
+    def is_paint_enabled(self) -> bool:
+        return self._paint_enabled
+
     def has_image(self) -> bool:
         return (self._image is not None) and (not self._image.isNull())
 
@@ -85,6 +88,14 @@ class ImageWidget(QWidget):
     def clear(self) -> None:
         print("clear")
         self._lines = []
+        self.update()
+
+    def remove_last_line(self) -> None:
+        if self._current_line_set is not None:
+            self._current_line_set = None
+            self._last_pen_pos = None
+        if len(self._lines) > 0:
+            self._lines.pop()
         self.update()
 
     def _get_target_pen_width(self) -> float:
@@ -120,29 +131,25 @@ class ImageWidget(QWidget):
             self.update()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        if not self._paint_enabled:
-            super().mousePressEvent(event)
-            return
-        if (event.button() == Qt.LeftButton) and (event.buttons() == Qt.LeftButton):
+        if self._paint_enabled and (event.button() == Qt.LeftButton) and (event.buttons() == Qt.LeftButton):
             self._last_pen_pos = event.pos()
             self._current_line_set = _LineSet(self._get_target_pen_width())
             self._lines.append(self._current_line_set)
         else:
             self._finish_paint(event.pos())
+            super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if not self._paint_enabled:
-            super().mouseMoveEvent(event)
-            return
-        if self._last_pen_pos is not None:
+        if self._paint_enabled and self._last_pen_pos is not None:
             pos = event.pos()
             self._add_line(pos)
             self._last_pen_pos = pos
             self.update()
+        else:
+            super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if not self._paint_enabled:
-            super().mouseReleaseEvent(event)
-            return
-        if self._last_pen_pos is not None:
+        if self._paint_enabled and self._last_pen_pos is not None:
             self._finish_paint(event.pos())
+        else:
+            super().mouseReleaseEvent(event)
