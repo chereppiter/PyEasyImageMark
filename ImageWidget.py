@@ -63,6 +63,9 @@ class ImageWidget(QWidget):
     def set_pen_width(self, width: int) -> None:
         self._pen_width = width
 
+    def get_pen_width(self) -> int:
+        return self._pen_width
+
     def set_paint_enabled(self, enabled: bool) -> None:
         self._paint_enabled = enabled
         if not enabled and self._last_pen_pos is not None:

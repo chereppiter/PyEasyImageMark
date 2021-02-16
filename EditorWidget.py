@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import (QWidget, QScrollArea, QMenu, QApplication,
                              QAction, QShortcut, QActionGroup)
-from PyQt5.QtGui import QKeySequence, QMouseEvent, QWheelEvent, QContextMenuEvent
-from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtGui import (QKeySequence, QMouseEvent, QWheelEvent, QContextMenuEvent,
+                         QCursor, QPixmap, QImage, QPainter)
+from PyQt5.QtCore import QEvent, Qt, QRect
 from ImageWidget import ImageWidget
 
 
@@ -43,7 +44,7 @@ class EditorWidget(QScrollArea):
 
         self._context_menu.addSection("Pen Width")
         pen_width_action_group = QActionGroup(self)
-        for width in (2, 3, 5, 7, 10, 14, 20):
+        for width in (3, 5, 7, 10, 14, 20):
             action = self._context_menu.addAction(str(width) + " px")
             action.setData(width)
             action.setCheckable(True)
@@ -51,6 +52,7 @@ class EditorWidget(QScrollArea):
             if width == 5:
                 action.setChecked(True)
         pen_width_action_group.triggered.connect(self._on_pen_width_action_checked)
+        self._on_pen_width_action_checked(pen_width_action_group.checkedAction())
 
         self._context_menu.addSeparator()
         copy_action = self._context_menu.addAction("Copy")
@@ -78,11 +80,29 @@ class EditorWidget(QScrollArea):
         undo_shortcut.activated.connect(undo_action.trigger)
 
     def _on_mouse_mode_action_checked(self, action: QAction):
-        self._image_widget.set_paint_enabled(action == self._paint_mode_action)
+        paint_mode_on = (action == self._paint_mode_action)
+        self._image_widget.set_paint_enabled(paint_mode_on)
+        if paint_mode_on:
+            self._image_widget.setCursor(self._get_pen_cursor())
+        else:
+            self._image_widget.setCursor(Qt.SizeAllCursor)
 
     def _on_pen_width_action_checked(self, action: QAction) -> None:
         selected_pen_width = int(action.data())
         self._image_widget.set_pen_width(selected_pen_width)
+        if self._image_widget.is_paint_enabled():
+            self._image_widget.setCursor(self._get_pen_cursor())
+
+    def _get_pen_cursor(self) -> QCursor:
+        image = QImage(32, 32, QImage.Format_ARGB32_Premultiplied)
+        image.fill(Qt.transparent)
+        pen_diam = self._image_widget.get_pen_width()
+        pen_rect = QRect(0, 0, pen_diam, pen_diam)
+        pen_rect.moveCenter(image.rect().center())
+        painter = QPainter(image)
+        painter.drawEllipse(pen_rect)
+        painter.end()
+        return QCursor(QPixmap.fromImage(image))
 
     def _paste(self) -> None:
 
