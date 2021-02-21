@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QPaintEvent, QPainter, QPen, QColor, QImage, QMouseEvent
+from PyQt5.QtGui import QPaintEvent, QPainter, QPen, QColor, QImage, QMouseEvent, QCursor
 from PyQt5.QtCore import QSizeF, QRectF, QPoint, QPointF, Qt
 
 
@@ -69,7 +69,7 @@ class ImageWidget(QWidget):
     def set_paint_enabled(self, enabled: bool) -> None:
         self._paint_enabled = enabled
         if not enabled and self._last_pen_pos is not None:
-            self._finish_paint()
+            self._finish_paint(self.mapFromGlobal(QCursor.pos()))
 
     def is_paint_enabled(self) -> bool:
         return self._paint_enabled

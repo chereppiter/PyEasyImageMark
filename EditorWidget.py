@@ -2,11 +2,23 @@ from PyQt5.QtWidgets import (QWidget, QScrollArea, QMenu, QApplication,
                              QAction, QShortcut, QActionGroup)
 from PyQt5.QtGui import (QKeySequence, QMouseEvent, QWheelEvent, QContextMenuEvent,
                          QCursor, QPixmap, QImage, QPainter)
-from PyQt5.QtCore import QEvent, Qt, QRect
+from PyQt5.QtCore import QEvent, Qt, QRect, pyqtSignal
 from ImageWidget import ImageWidget
+from enum import IntEnum, unique
+
+
+@unique
+class EditorWidgetMode(IntEnum):
+    Move = 1
+    Paint = 2
 
 
 class EditorWidget(QScrollArea):
+
+    status_message_request = pyqtSignal(str)
+    mode_changed = pyqtSignal(EditorWidgetMode)
+    pen_width_changed = pyqtSignal(int)
+    scale_factor_changed = pyqtSignal(float)
 
     def __init__(self, parent: QWidget):
         super().__init__(parent)
@@ -79,6 +91,17 @@ class EditorWidget(QScrollArea):
         undo_shortcut = QShortcut(undo_key_sequence, self)
         undo_shortcut.activated.connect(undo_action.trigger)
 
+    def get_mode(self) -> EditorWidgetMode:
+        if self._image_widget.is_paint_enabled():
+            return EditorWidgetMode.Paint
+        return EditorWidgetMode.Move
+
+    def get_pen_width(self) -> int:
+        return self._image_widget.get_pen_width()
+
+    def get_scale_factor(self) -> float:
+        return self._image_widget.get_scale_factor()
+
     def _on_mouse_mode_action_checked(self, action: QAction):
         paint_mode_on = (action == self._paint_mode_action)
         self._image_widget.set_paint_enabled(paint_mode_on)
@@ -86,12 +109,14 @@ class EditorWidget(QScrollArea):
             self._image_widget.setCursor(self._get_pen_cursor())
         else:
             self._image_widget.setCursor(Qt.SizeAllCursor)
+        self.mode_changed.emit(self.get_mode())
 
     def _on_pen_width_action_checked(self, action: QAction) -> None:
         selected_pen_width = int(action.data())
         self._image_widget.set_pen_width(selected_pen_width)
         if self._image_widget.is_paint_enabled():
             self._image_widget.setCursor(self._get_pen_cursor())
+        self.pen_width_changed.emit(selected_pen_width)
 
     def _get_pen_cursor(self) -> QCursor:
         image = QImage(32, 32, QImage.Format_ARGB32_Premultiplied)
@@ -112,18 +137,24 @@ class EditorWidget(QScrollArea):
             image = self._clipboard.image()
             if not image.isNull():
                 self._image_widget.set_image(image)
+                self.status_message_request.emit("Image pasted from clipboard")
             else:
                 print("Image is null")
+                self.status_message_request.emit("Clipboard has no image")
         else:
             print("Clipboard has no image")
+            self.status_message_request.emit("Clipboard has no image")
 
     def _copy(self) -> None:
         print("copy")
         if self._image_widget.has_image():
             self._clipboard.setImage(self._image_widget.get_complex_image())
+            self.status_message_request.emit("Image is copied to clipboard")
+        else:
+            self.status_message_request.emit("No image to copy")
 
     def _reset_scale(self):
-        self._image_widget.set_scale_factor(1.0)
+        self._set_scale_factor(1.0)
 
     def viewportEvent(self, event: QEvent) -> bool:
 
@@ -180,7 +211,7 @@ class EditorWidget(QScrollArea):
         if angle_delta_y < 0:
             scale_factor_factor = 1.0 / scale_factor_factor
         old_center = self._image_widget.mapFromParent(self.viewport().rect().center())
-        self._image_widget.set_scale_factor(self._image_widget.get_scale_factor() * scale_factor_factor)
+        self._set_scale_factor(self._image_widget.get_scale_factor() * scale_factor_factor)
 
         new_center = old_center * scale_factor_factor
         offset = new_center - old_center
@@ -189,3 +220,7 @@ class EditorWidget(QScrollArea):
 
     def _handle_context_menu_event(self, event: QContextMenuEvent) -> None:
         self._context_menu.exec_(event.globalPos())
+
+    def _set_scale_factor(self, scale_factor: float) -> None:
+        self._image_widget.set_scale_factor(scale_factor)
+        self.scale_factor_changed.emit(scale_factor)
