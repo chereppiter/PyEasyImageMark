@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QWidget, QScrollArea, QMenu, QApplication,
 from PyQt5.QtGui import (QKeySequence, QMouseEvent, QWheelEvent, QContextMenuEvent,
                          QCursor, QPixmap, QImage, QPainter)
 from PyQt5.QtCore import QEvent, Qt, QRect, pyqtSignal
-from ImageWidget import ImageWidget
+from PyEasyImageMark.ImageWidget import ImageWidget
 from enum import IntEnum, unique
 
 

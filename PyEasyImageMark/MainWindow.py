@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QMainWindow, QLabel
-from EditorWidget import EditorWidget, EditorWidgetMode
+from PyEasyImageMark.EditorWidget import EditorWidget, EditorWidgetMode
 
 
 class MainWindow(QMainWindow):

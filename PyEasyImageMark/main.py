@@ -1,9 +1,9 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from MainWindow import MainWindow
+from PyEasyImageMark.MainWindow import MainWindow
 
-if __name__ == '__main__':
 
+def run():
     app = QApplication(sys.argv[:])
     app.setApplicationName("PyEasyImageMark")
     main_widget = MainWindow()
