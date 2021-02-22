@@ -34,125 +34,125 @@ class ImageWidget(QWidget):
 
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
-        self._image = None
-        self._reset()
-        self._pen_width = 5
-        self._paint_enabled = True
+        self.__image = None
+        self.__reset()
+        self.__pen_width = 5
+        self.__paint_enabled = True
 
-    def _reset(self) -> None:
-        self._scale_factor = 1.0
-        self._lines = []
-        self._current_line_set = None
-        self._last_pen_pos = None
+    def __reset(self) -> None:
+        self.__scale_factor = 1.0
+        self.__lines = []
+        self.__current_line_set = None
+        self.__last_pen_pos = None
 
     def set_image(self, image: QImage) -> None:
-        self._image = image
-        self._reset()
+        self.__image = image
+        self.__reset()
         self.resize(image.size())
         self.update()
 
     def set_scale_factor(self, factor: float) -> None:
-        self._scale_factor = factor
+        self.__scale_factor = factor
         if self.has_image():
-            self.resize(self._image.size() * self._scale_factor)
+            self.resize(self.__image.size() * self.__scale_factor)
             self.update()
 
     def get_scale_factor(self) -> float:
-        return self._scale_factor
+        return self.__scale_factor
 
     def set_pen_width(self, width: int) -> None:
-        self._pen_width = width
+        self.__pen_width = width
 
     def get_pen_width(self) -> int:
-        return self._pen_width
+        return self.__pen_width
 
     def set_paint_enabled(self, enabled: bool) -> None:
-        self._paint_enabled = enabled
-        if not enabled and self._last_pen_pos is not None:
-            self._finish_paint(self.mapFromGlobal(QCursor.pos()))
+        self.__paint_enabled = enabled
+        if not enabled and self.__last_pen_pos is not None:
+            self.__finish_paint(self.mapFromGlobal(QCursor.pos()))
 
     def is_paint_enabled(self) -> bool:
-        return self._paint_enabled
+        return self.__paint_enabled
 
     def has_image(self) -> bool:
-        return (self._image is not None) and (not self._image.isNull())
+        return (self.__image is not None) and (not self.__image.isNull())
 
     def get_complex_image(self) -> QImage:
 
-        if self._image is None:
+        if self.__image is None:
             return QImage()
 
-        image = QImage(self._image)
+        image = QImage(self.__image)
         painter = QPainter(image)
-        for line_set in self._lines:
+        for line_set in self.__lines:
             line_set.draw(painter)
         return image
 
     def clear(self) -> None:
         print("clear")
-        self._lines = []
+        self.__lines = []
         self.update()
 
     def remove_last_line(self) -> None:
-        if self._current_line_set is not None:
-            self._current_line_set = None
-            self._last_pen_pos = None
-        if len(self._lines) > 0:
-            self._lines.pop()
+        if self.__current_line_set is not None:
+            self.__current_line_set = None
+            self.__last_pen_pos = None
+        if len(self.__lines) > 0:
+            self.__lines.pop()
         self.update()
 
-    def _get_target_pen_width(self) -> float:
-        return self._pen_width / self._scale_factor
+    def __get_target_pen_width(self) -> float:
+        return self.__pen_width / self.__scale_factor
 
     def paintEvent(self, event: QPaintEvent) -> None:
 
-        if self._image is None:
+        if self.__image is None:
             super().paintEvent(event)
 
         else:
             painter = QPainter(self)
 
             # Draw image
-            target_size = QSizeF(self._image.size()) * self._scale_factor
+            target_size = QSizeF(self.__image.size()) * self.__scale_factor
             target_rect = QRectF(QPointF(0, 0), target_size)
-            source_rect = QRectF(self._image.rect())
-            painter.drawImage(target_rect, self._image, source_rect)
+            source_rect = QRectF(self.__image.rect())
+            painter.drawImage(target_rect, self.__image, source_rect)
 
             # Draw lines
-            for line_set in self._lines:
-                line_set.draw(painter, self._scale_factor)
+            for line_set in self.__lines:
+                line_set.draw(painter, self.__scale_factor)
 
-    def _add_line(self, pos: QPoint) -> None:
-        line = _Line(self._last_pen_pos / self._scale_factor, pos / self._scale_factor)
-        self._current_line_set.add_line(line)
+    def __add_line(self, pos: QPoint) -> None:
+        line = _Line(self.__last_pen_pos / self.__scale_factor, pos / self.__scale_factor)
+        self.__current_line_set.add_line(line)
 
-    def _finish_paint(self, pos: QPoint) -> None:
-        if self._last_pen_pos is not None:
-            self._add_line(pos)
-            self._last_pen_pos = None
-            self._current_lines = None
+    def __finish_paint(self, pos: QPoint) -> None:
+        if self.__last_pen_pos is not None:
+            self.__add_line(pos)
+            self.__last_pen_pos = None
+            self.__current_lines = None
             self.update()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        if self._paint_enabled and (event.button() == Qt.LeftButton) and (event.buttons() == Qt.LeftButton):
-            self._last_pen_pos = event.pos()
-            self._current_line_set = _LineSet(self._get_target_pen_width())
-            self._lines.append(self._current_line_set)
+        if self.__paint_enabled and (event.button() == Qt.LeftButton) and (event.buttons() == Qt.LeftButton):
+            self.__last_pen_pos = event.pos()
+            self.__current_line_set = _LineSet(self.__get_target_pen_width())
+            self.__lines.append(self.__current_line_set)
         else:
-            self._finish_paint(event.pos())
+            self.__finish_paint(event.pos())
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if self._paint_enabled and self._last_pen_pos is not None:
+        if self.__paint_enabled and self.__last_pen_pos is not None:
             pos = event.pos()
-            self._add_line(pos)
-            self._last_pen_pos = pos
+            self.__add_line(pos)
+            self.__last_pen_pos = pos
             self.update()
         else:
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if self._paint_enabled and self._last_pen_pos is not None:
-            self._finish_paint(event.pos())
+        if self.__paint_enabled and self.__last_pen_pos is not None:
+            self.__finish_paint(event.pos())
         else:
             super().mouseReleaseEvent(event)
